@@ -2,6 +2,14 @@
 
 A modern and responsive currency converter built with React + TypeScript, using the Currencyapi API to fetch current and historical exchange rates.
 
+## 🚀 Live Demo
+
+**[View Live Demo](https://currency-converter-delta-ruby-28.vercel.app/)**
+
+Try the application online without any setup required!
+
+> **Note**: If the demo shows API errors, the free API key may have expired. For full functionality, clone and run locally with your own API key.
+
 ## 🌟 Features
 
 - ✅ **Real-time Conversion**: Current exchange rates between 100+ currencies
