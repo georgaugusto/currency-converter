@@ -1,0 +1,224 @@
+version: 1
+name: currency-converter-challenge-plan
+description: Plano de execução para o Code Challenge – Currency Converter (SPA em React + TypeScript com Vite)
+created_at: 2025-08-11
+status: planned
+
+references:
+  - name: Currencyapi – Currency Conversion API
+    url: "https://currencyapi.com/"
+  - name: Vite – Getting Started
+    url: "https://vite.dev/guide/"
+
+scope:
+  summary: |
+    Implementar uma single-page application que converte valores entre moedas usando a API Currencyapi. 
+    Deve validar formulário, buscar taxas atuais/históricas, calcular o resultado (até 2 casas), 
+    tratar erros de rede/validação e permitir swap de moedas.
+  out_of_scope: |
+    Não usar bibliotecas de UI (Material-UI, etc) e não usar outras APIs para moedas/ taxas.
+
+stack:
+  framework: React 19 (SPA)
+  language: TypeScript
+  toolchain: Vite
+  styling: ["CSS Modules", "SCSS (opcional)"]
+  utilities: ["zod (validação)", "decimal.js-light (opcional para precisão)"]
+  testing: ["Vitest", "Testing Library (opcional)"]
+
+env:
+  variables:
+    - name: VITE_CURRENCYAPI_KEY
+      required: true
+      description: Token da Currencyapi para requisições
+  files:
+    - .env.local (não comitar)
+    - .env.example (incluir chave placeholder)
+
+api:
+  base_url: "https://api.currencyapi.com/v3"
+  endpoints:
+    latest:
+      method: GET
+      path: "/latest"
+      params: ["apikey", "base_currency", "currencies"]
+      usage: Obter taxa atual quando a data não for informada
+    historical:
+      method: GET
+      path: "/historical"
+      params: ["apikey", "base_currency", "currencies", "date"]
+      usage: Obter taxa histórica quando a data for informada (YYYY-MM-DD)
+  response_shape: |
+    json.data[TO].value -> number (taxa a ser aplicada)
+
+data_model:
+  form:
+    from: string # código da moeda origem (ex: USD)
+    to: string # código da moeda destino (ex: BRL)
+    amount: string # valor textual validado (positivo, até 2 casas)
+    date: string|null # YYYY-MM-DD ou vazio
+
+validation_rules:
+  amount:
+    required: true
+    regex: "^\\d+(\\.\\d{1,2})?$"
+    message: "Valor positivo com no máximo 2 casas decimais"
+  from:
+    required: true
+    message: "Selecione a moeda de origem"
+  to:
+    required: true
+    message: "Selecione a moeda de destino"
+  date:
+    required: false
+    rule: "se informada, não pode ser no futuro (comparar apenas data)"
+    message: "A data não pode ser futura"
+  same_currency:
+    rule: "se from == to, resultado = amount (sem chamada à API)"
+
+computation:
+  formula: "result = amount * rate"
+  rate_source: "json.data[TO].value"
+  precision:
+    display: "máximo 2 casas decimais (Intl.NumberFormat)"
+    arithmetic: "usar decimal.js-light opcionalmente para evitar erro de ponto flutuante"
+
+ui:
+  components:
+    - CurrencySelect (para From e To)
+    - AmountInput
+    - DateInput (opcional)
+    - SubmitButton (Converter)
+    - SwapButton (troca From/To)
+    - Result (exibe resultado formatado)
+    - ErrorBanner (erros gerais)
+  interactions:
+    - Enter envia formulário
+    - Submit desativado durante loading
+    - Mensagens de erro claras por campo
+    - Swap somente quando ambos preenchidos; caso contrário, ignorar e avisar discretamente
+
+flows:
+  - name: Carregar moedas suportadas
+    steps:
+      - Buscar lista de moedas/códigos suportados (via Currencyapi)
+      - Preencher selects; exibir loading/erro com retry
+  - name: Submeter conversão
+    steps:
+      - Validar schema (amount, from, to, date)
+      - Se from == to -> resultado = amount
+      - Se date presente -> chamar historical; senão latest
+      - Extrair rate, calcular result, exibir formatado
+  - name: Swap moedas
+    steps:
+      - Trocar valores de from/to quando ambos estiverem preenchidos
+      - Caso contrário, manter e informar aviso não intrusivo
+  - name: Re-submissão
+    steps:
+      - Permitir novas submissões sem recarregar a página
+
+error_handling:
+  currencies_load_failure: "Mostrar ErrorBanner e botão de tentar novamente"
+  rate_fetch_failure: "Mensagem contextual na área do resultado e permitir nova tentativa"
+  validation_failure: "Mensagens específicas por campo e foco no primeiro erro"
+  network_timeout: "Abortar em ~10s e sugerir nova tentativa"
+
+project_structure:
+  suggestion:
+    - src/api/currencyApi.ts
+    - src/features/converter/ConverterPage.tsx
+    - src/features/converter/ConverterForm.tsx
+    - src/features/converter/Result.tsx
+    - src/components/CurrencySelect.tsx
+    - src/components/AmountInput.tsx
+    - src/components/DateInput.tsx
+    - src/components/SwapButton.tsx
+    - src/components/ErrorBanner.tsx
+    - src/hooks/useCurrencies.ts
+    - src/utils/number.ts
+    - src/utils/date.ts
+    - src/validation/schema.ts
+    - src/styles/globals.scss
+
+acceptance_criteria:
+  - "SPA em React+TS via Vite, sem bibliotecas de UI"
+  - "Selects From/To, Amount obrigatório, Date opcional (não futura)"
+  - "Swap funcional conforme regras"
+  - "Busca taxa atual/histórica na Currencyapi conforme data"
+  - "Cálculo do resultado feito no cliente e exibido com até 2 casas"
+  - "Tratamento de erros de rede/validação"
+  - "Re-submissão possível sem recarregar"
+  - "README com instruções e uso de token via .env"
+
+tasks:
+  - id: T01
+    title: Iniciar projeto com Vite (react-ts) e configurar scripts
+    status: todo
+  - id: T02
+    title: Configurar .env.example e leitura de VITE_CURRENCYAPI_KEY
+    status: todo
+  - id: T03
+    title: Implementar cliente de API (latest/historical) e tratamento de erro
+    status: todo
+  - id: T04
+    title: Hook de moedas (carregamento e cache simples)
+    status: todo
+  - id: T05
+    title: Criar formulário (From, To, Amount, Date) com validação (zod)
+    status: todo
+  - id: T06
+    title: Implementar fluxo de submit (inclui same-currency shortcut)
+    status: todo
+  - id: T07
+    title: Implementar SwapButton e regras de troca
+    status: todo
+  - id: T08
+    title: Exibir resultado formatado (máx 2 casas) e estados de loading
+    status: todo
+  - id: T09
+    title: Tratamento de erros visuais (ErrorBanner, mensagens por campo)
+    status: todo
+  - id: T10
+    title: Testes unitários (utils, validação, api) e integrados (form)
+    status: todo
+  - id: T11
+    title: Refinos de UX/A11y e revisão geral
+    status: todo
+  - id: T12
+    title: README completo e verificação final
+    status: todo
+
+schedule:
+  day_1: [T01, T02]
+  day_2: [T03, T04]
+  day_3: [T05, T06]
+  day_4: [T07, T08]
+  day_5: [T09, T10]
+  day_6: [T11]
+  day_7: [T12]
+
+deliverables:
+  - "Repositório público (GitHub/GitLab)"
+  - "README com passos de execução e configuração do token (.env.local)"
+
+risks:
+  - name: Limite de requests/quotas
+    mitigation: "Debounce de chamadas, uso de 'currencies=TO' para reduzir payload, cache simples"
+  - name: Precisão numérica
+    mitigation: "Usar decimal.js-light no cálculo, limitar exibição a 2 casas"
+  - name: Instabilidade de rede
+    mitigation: "Timeout + retry manual pelo usuário"
+
+non_functional:
+  performance: "Evitar rerenders desnecessários; memoização simples"
+  accessibility: "Labels, aria-live para mensagens de erro/resultado"
+  i18n: "Mensagens em pt-BR (default); arquitetura preparada para i18n (opcional)"
+
+qa_checklist:
+  - "Form valida amount, from, to; data futura bloqueada"
+  - "from == to retorna o próprio valor sem chamar API"
+  - "latest sem data; historical com data; extrai rate corretamente"
+  - "Erro de rede exibido e permite tentar novamente"
+  - "Swap funciona somente com ambos preenchidos"
+  - "Resultado com até 2 casas decimais"
+  - "README explica como rodar e configurar token"
